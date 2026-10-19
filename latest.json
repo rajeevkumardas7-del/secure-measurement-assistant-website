@@ -1,6 +1,6 @@
 {
-  "version": "4.9.1",
-  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/latest/download/SECURE-Assistant-Installer-Windows-10-11-x64.exe",
-  "sha256": "84650D4050D53BB79D61F52E44093FABA6A1968521986C6FBEB213ECDB96B899",
-  "notes": "Windows 10/11 installer with the current PDF review and automation improvements."
+  "version": "4.10.20",
+  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.20/SECURE-Measurement-Assistant-Setup-4.10.20.exe",
+  "sha256": "09d107494f81e561153024b675140bf5cfcd0812fa0e40463b733770d09b0ceb",
+  "notes": "Published 4.10.20 installer with updated overview layout, measurement review improvements, and installer fixes."
 }
