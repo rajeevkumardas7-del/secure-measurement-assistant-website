@@ -1,6 +1,6 @@
 {
-  "version": "4.10.20",
-  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.20/SECURE-Measurement-Assistant-Setup-4.10.20.exe",
-  "sha256": "09d107494f81e561153024b675140bf5cfcd0812fa0e40463b733770d09b0ceb",
-  "notes": "Published 4.10.20 installer with updated overview layout, measurement review improvements, and installer fixes."
+  "version": "4.10.27",
+  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.27/SECURE-Measurement-Assistant-Setup-4.10.27.exe",
+  "sha256": "b293cc83f1948add6d01e71b4ec533578a01bf50a86c55ccddd83c6da026da82",
+  "notes": "Clear E-MB table headings and a permanent valuation Total row for total and labour amounts."
 }
