@@ -1,6 +1,6 @@
 {
-  "version": "4.10.27",
-  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.27/SECURE-Measurement-Assistant-Setup-4.10.27.exe",
-  "sha256": "b293cc83f1948add6d01e71b4ec533578a01bf50a86c55ccddd83c6da026da82",
-  "notes": "Clear E-MB table headings and a permanent valuation Total row for total and labour amounts."
+  "version": "4.10.50",
+  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.50/SECURE-Measurement-Assistant-Setup-4.10.50.exe",
+  "sha256": "79a074bf2a09b8a67ae2ed5feeddbf4f4200dd1b01b9c61ad4c54957bb201227",
+  "notes": "Fixes repeated SECURE item-code saving and measurement-panel recovery. The installer replaces old application files while retaining the required Windows runtime."
 }
