@@ -1,6 +1,6 @@
 {
-  "version": "4.10.50",
-  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v4.10.50/SECURE-Measurement-Assistant-Setup-4.10.50.exe",
-  "sha256": "79a074bf2a09b8a67ae2ed5feeddbf4f4200dd1b01b9c61ad4c54957bb201227",
-  "notes": "Fixes repeated SECURE item-code saving and measurement-panel recovery. The installer replaces old application files while retaining the required Windows runtime."
+  "version": "5.06",
+  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v5.06/SECURE-Measurement-Assistant-Setup-5.06.exe",
+  "sha256": "1332722e5e581df9af621c39655293bb5a4c4ba51547f93de9b4ba90b80166c2",
+  "notes": "SECURE Automation and E-MB included. Compact Google sign-in and subscription access. Installer self-test and isolated installation test passed."
 }
