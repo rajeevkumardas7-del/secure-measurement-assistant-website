@@ -1,0 +1,15 @@
+# Preview API only. Portal workers and durable job storage are not enabled.
+services:
+  - type: web
+    name: secure-web-valuation-preview
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: cloud-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: WEB_ORIGIN
+        value: https://securemeasurementassistant.info
+      - key: LICENSE_URL
+        sync: false

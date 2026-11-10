@@ -23,6 +23,15 @@ portal sign-in and save selectors still require runtime verification.
 
 ## Deploy the API
 
+The repository root includes `render.yaml` for a separate free preview API.
+Import this repository as a Render Blueprint and supply the existing licensing
+service HTTPS URL when prompted. It does not modify the existing payment server.
+The Docker build runs all ten tests and fails if any test fails.
+This preview has no persistent disk: do not enable jobs or store user documents
+on it. Durable storage and isolated browser workers are separate production work.
+After deployment, check `/health`, verify rejected unauthenticated requests,
+then configure and test a Google web client before editing `app/config.json`.
+
 Build this folder's Dockerfile on a separate HTTPS service. Configure:
 
 * `LICENSE_URL`: existing HTTPS licensing service URL (no credentials).
