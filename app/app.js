@@ -46,11 +46,13 @@ $('signout').onclick=()=>{token='';$('rows').replaceChildren();invalidate();$('e
 async function boot(){
   try{
     const config=await (await fetch('config.json',{cache:'no-store'})).json();
-    if(!config.apiBase||!config.googleClientId){$('service').textContent='Framework preview — hosted service not connected';$('service-detail').textContent='The browser workspace is installed on the website. Google web sign-in, hosting and live portal verification must be completed before online automation is enabled.';return;}
+    if(!config.apiBase){$('service').textContent='Framework preview — hosted service not connected';$('service-detail').textContent='The browser workspace is installed on the website. Google web sign-in, hosting and live portal verification must be completed before online automation is enabled.';return;}
     const url=new URL(config.apiBase);if(url.protocol!=='https:')throw Error('HTTPS service required.');api=url.href.replace(/\/$/,'');
-    const healthResponse=await fetch(api+'/health',{signal:AbortSignal.timeout(15000)});if(!healthResponse.ok)throw Error('Hosted service unavailable.');
+    $('service').textContent='Connecting to hosted service…';$('service-detail').textContent='The free preview server may take about a minute to wake up.';
+    const healthResponse=await fetch(api+'/health',{signal:AbortSignal.timeout(90000)});if(!healthResponse.ok)throw Error('Hosted service unavailable.');
     const health=await healthResponse.json();if(!health.licenseConfigured)throw Error('Hosted sign-in is not configured.');
     $('service').textContent='Valuation service connected';$('service-detail').textContent='Portal automation and PDF reading are not enabled in this framework release.';
+    if(!config.googleClientId){$('access').textContent='Backend connected. Google web sign-in configuration is pending; calculations remain locked until server-verified sign-in is available.';return;}
     const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;
     script.onload=()=>{google.accounts.id.initialize({client_id:config.googleClientId,callback:async credential=>{
       try{token=credential.credential;const state=await request('/v1/access');$('access').textContent=`Access: ${state.access}. Server verified.`;$('editor').disabled=false;$('signout').hidden=false;if(!$('rows').rows.length)addRow();}

@@ -1,5 +1,5 @@
 {
-  "apiBase": "",
+  "apiBase": "https://secure-web-valuation-preview.onrender.com",
   "googleClientId": "",
   "release": "web-framework-1"
 }
