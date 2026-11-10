@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+cloud-service/data/
+.env
+node_modules/
