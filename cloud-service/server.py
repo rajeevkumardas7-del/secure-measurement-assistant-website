@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.parse import urlparse
 from domain import Jobs, calculate
+from pdf_reader import read_upload, MAX_BYTES
 
 ORIGIN = os.environ.get('WEB_ORIGIN','https://securemeasurementassistant.info')
 LICENSE_URL = os.environ.get('LICENSE_URL','')
@@ -50,7 +51,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/health':
             return self.send(200,{'status':'ok','version':'web-framework-1',
-                'capabilities':{'valuation':True,'portalAutomation':False,'pdfReading':False},
+                'capabilities':{'valuation':True,'portalAutomation':False,'pdfReading':True,'scannedPdfReading':False},
                 'licenseConfigured':LICENSE_URL.startswith('https://')})
         self.handle_api()
     def do_POST(self): self.handle_api()
@@ -60,6 +61,11 @@ class Handler(BaseHTTPRequestHandler):
             token = self.headers.get('Authorization','')
             if not token.startswith('Bearer '): raise PermissionError('Sign in required.')
             state = access(token[7:]); owner = state['userId']
+            if self.path == '/v1/pdf/read' and self.command == 'POST':
+                size = int(self.headers.get('Content-Length', '0'))
+                if self.headers.get('Content-Type', '').split(';')[0] != 'application/pdf' or not 0 < size <= MAX_BYTES:
+                    raise ValueError('Choose a PDF no larger than 5 MB.')
+                return self.send(200, read_upload(self.rfile.read(size)))
             payload = {}
             if self.command == 'POST':
                 size = int(self.headers.get('Content-Length','0'))

@@ -42,7 +42,7 @@ $('calculate').onclick=async()=>{
   }catch(error){$('errors').textContent=error.message;}finally{$('editor').disabled=!token;$('calculate').disabled=false;}
 };
 $('export').onclick=()=>{if(!result)return;const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));link.download='secure-valuation.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);};
-$('signout').onclick=()=>{token='';$('rows').replaceChildren();invalidate();$('editor').disabled=true;$('signout').hidden=true;$('access').textContent='Signed out. Sign in again to continue.';};
+$('signout').onclick=()=>{token='';$('rows').replaceChildren();invalidate();$('editor').disabled=true;$('pdf-file').disabled=true;$('read-pdf').disabled=true;$('pdf-review').replaceChildren();$('pdf-file').value='';$('pdf-status').textContent='';$('signout').hidden=true;$('access').textContent='Signed out. Sign in again to continue.';};
 async function boot(){
   try{
     const config=await (await fetch('config.json',{cache:'no-store'})).json();
@@ -51,11 +51,11 @@ async function boot(){
     $('service').textContent='Connecting to hosted service…';$('service-detail').textContent='The free preview server may take about a minute to wake up.';
     const healthResponse=await fetch(api+'/health',{signal:AbortSignal.timeout(90000)});if(!healthResponse.ok)throw Error('Hosted service unavailable.');
     const health=await healthResponse.json();if(!health.licenseConfigured)throw Error('Hosted sign-in is not configured.');
-    $('service').textContent='Valuation service connected';$('service-detail').textContent='Portal automation and PDF reading are not enabled in this framework release.';
+    $('service').textContent='Valuation service connected';$('service-detail').textContent='Selectable PDF reading and valuation are available after sign-in. Portal automation is not enabled.';
     if(!config.googleClientId){$('access').textContent='Backend connected. Google web sign-in configuration is pending; calculations remain locked until server-verified sign-in is available.';return;}
     const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;
     script.onload=()=>{google.accounts.id.initialize({client_id:config.googleClientId,callback:async credential=>{
-      try{token=credential.credential;const state=await request('/v1/access');$('access').textContent=`Access: ${state.access}. Server verified.`;$('editor').disabled=false;$('signout').hidden=false;if(!$('rows').rows.length)addRow();}
+      try{token=credential.credential;const state=await request('/v1/access');$('access').textContent=`Access: ${state.access}. Server verified.`;$('editor').disabled=false;$('pdf-file').disabled=false;$('read-pdf').disabled=false;$('signout').hidden=false;if(!$('rows').rows.length)addRow();}
       catch(error){token='';$('editor').disabled=true;$('access').textContent=error.message;}
     }});google.accounts.id.renderButton($('google-button'),{theme:'outline',size:'large'});};
     script.onerror=()=>{$('access').textContent='Google sign-in could not load. Please retry.';};document.head.append(script);

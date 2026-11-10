@@ -2,6 +2,14 @@
 
 Status: framework, not a production portal automation service.
 
+Selectable PDF preview: authenticated `POST /v1/pdf/read` accepts raw
+`application/pdf`, up to 5 MB and 40 pages. The desktop estimate.py parser is
+vendored from the editable SECURE source. Processing runs in a temporary child
+process (60-second timeout, Linux CPU/address-space limits, one reader at once).
+Temporary files are removed on completion or failure. No estimates are saved.
+Scanned PDFs are explicitly rejected until hosted OCR is verified. Extraction
+requires user review and is never an authorization to submit portal entries.
+
 ## Boundaries
 
 - `/app/` is the website entry point and responsive SECURE/E-MB shell.
