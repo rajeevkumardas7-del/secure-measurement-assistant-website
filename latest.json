@@ -1,6 +1,6 @@
 {
-  "version": "5.10.3",
-  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v5.10.3/SECURE-Measurement-Assistant-Setup-5.10.3.exe",
-  "sha256": "8ac0b013359dfbdc0d3e51661293405aee040ad503dc739e00e9a3267448a282",
-  "notes": "Includes E-MB, visible update alerts, PayU access options and automatic continuation from item codes to measurements. Results remain on the main screen. Package and installation self-tests passed; live payment and portal automation were not tested."
+  "version": "5.10.4",
+  "downloadUrl": "https://github.com/rajeevkumardas7-del/secure-measurement-assistant-website/releases/download/v5.10.4/SECURE-Measurement-Assistant-Setup-5.10.4.exe",
+  "sha256": "2f5642fe5d32edcd763cd333b6f27bc3c6e35ab64fe0c0e5e5b1fd05db2f3095",
+  "notes": "Includes E-MB, secure GitHub update checks, PayU access options and automatic continuation from item codes to measurements. Results remain on the main screen. Package and installation self-tests passed; live payment and portal automation were not tested."
 }
