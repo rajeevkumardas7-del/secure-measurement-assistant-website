@@ -1053,7 +1053,9 @@ def read_scanned_secure_pdf(path,catalog=None,progress=None):
         import pypdfium2 as pdfium
         from rapidocr_onnxruntime import RapidOCR
         document=pdfium.PdfDocument(str(path))
-        reader=RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1)
+        # Bound detection tensors on the hosted service; recognition keeps the original crops.
+        reader=RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1,
+                        det_limit_type='max', det_limit_side_len=960, rec_batch_num=1)
     except (ImportError, OSError, RuntimeError) as error:
         raise ValueError(f'{OCR_IMPORT_ERROR} Details: {error}') from error
     items=[];current=None;measuring=False;head='';columns={};summary={}
