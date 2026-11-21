@@ -1,9 +1,11 @@
 import io
 import unittest
+from unittest.mock import patch
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 from pdf_reader import read_upload
 from estimate import _secure_print_measurement_row, ocr_reader_status
+import pdf_reader
 
 def fixture(lines):
     writer=PdfWriter(); page=writer.add_blank_page(width=612,height=792)
@@ -16,6 +18,20 @@ def fixture(lines):
     output=io.BytesIO();writer.write(output);return output.getvalue()
 
 class PdfTests(unittest.TestCase):
+    def test_reader_memory_limit_releases_slot(self):
+        with patch('pdf_reader.reader_memory_kb', return_value=pdf_reader.MAX_READER_KB + 1):
+            with self.assertRaisesRegex(ValueError, 'memory limit'):
+                read_upload(fixture([]))
+        self.assertTrue(pdf_reader.SLOT.acquire(blocking=False))
+        pdf_reader.SLOT.release()
+
+    def test_pdf_larger_than_five_mb(self):
+        raw = fixture(['1 79.03.01c -- Excavation',
+            'Sl No Description No L B D CF Quantity Remark',
+            '1 footing 2 5 3 1 1 30 -', 'Net Total Quantity 30 cum', 'LIST'])
+        result = read_upload(raw + b'\n%' + b' ' * (6 * 1024 * 1024))
+        self.assertEqual(result['items'][0]['code'], '79.03.01c')
+
     def test_invalid_file(self):
         with self.assertRaises(ValueError):read_upload(b'not a PDF')
     def test_blank_pdf_reports_no_items_after_reader_path(self):

@@ -6,7 +6,7 @@ PDF preview: authenticated `POST /v1/pdf/read` accepts raw `application/pdf`,
 up to 25 MB and 40 pages. It uses the desktop app's `read_pdf_custom_ai` reader
 and trained model from the editable SECURE source, including its scanned-PDF
 OCR path. Processing runs in a temporary child process (60-second timeout,
-Linux CPU/address-space limits, one reader at once). Temporary files are
+Linux CPU/resident-memory limits (384 MB per reader), one reader at once). Temporary files are
 removed on completion or failure. No estimates are saved on the server.
 Extraction requires user review and is never an authorization to submit portal
 entries. Live OCR performance on the hosted free instance still needs a real

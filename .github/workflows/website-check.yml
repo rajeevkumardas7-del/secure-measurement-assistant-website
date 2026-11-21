@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check browser scripts
-        run: node --check app/app.js && node --check app/pdf.js
+        run: node --check app/app.js && node --check app/pdf.js && node app/test-pdf-session.cjs
       - name: Build and test hosted service
         run: docker build -t secure-web-test cloud-service
+      - name: Verify runtime within hosted memory budget
+        run: docker run --rm --memory=512m --memory-swap=512m secure-web-test python -m unittest discover -v

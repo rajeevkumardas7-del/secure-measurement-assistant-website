@@ -6,12 +6,48 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 
 MAX_BYTES = 25 * 1024 * 1024
 SLOT = threading.BoundedSemaphore(1)
+MAX_READER_KB = 384 * 1024
 
 class PdfReadError(ValueError):
     pass
+
+
+def reader_memory_kb(pid):
+    if os.name != 'posix':
+        return 0
+    try:
+        for line in Path(f'/proc/{pid}/status').read_text().splitlines():
+            if line.startswith('VmRSS:'):
+                return int(line.split()[1])
+    except FileNotFoundError:
+        return 0  # The reader exited between polling and reading its status.
+    return 0
+
+
+def run_reader(source, mode):
+    # OCR maps large libraries; bound resident memory instead of virtual mappings.
+    with subprocess.Popen([sys.executable, str(Path(__file__).resolve()), str(source), mode],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+        deadline = time.monotonic() + 60
+        try:
+            while True:
+                if reader_memory_kb(process.pid) > MAX_READER_KB:
+                    raise PdfReadError('PDF exceeds the hosted reader memory limit. Split it into smaller PDFs.')
+                if time.monotonic() >= deadline:
+                    raise PdfReadError('PDF exceeded the 60-second reading limit.')
+                try:
+                    output, errors = process.communicate(timeout=.25)
+                    return subprocess.CompletedProcess(process.args, process.returncode, output, errors)
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.communicate()
 
 def read_upload(raw, mode='custom_ai'):
     if not raw.startswith(b'%PDF-') or len(raw) > MAX_BYTES:
@@ -24,11 +60,7 @@ def read_upload(raw, mode='custom_ai'):
         with tempfile.TemporaryDirectory(prefix='secure-pdf-') as folder:
             source = Path(folder) / 'input.pdf'
             source.write_bytes(raw)
-            try:
-                run = subprocess.run([sys.executable, str(Path(__file__).resolve()), str(source), mode],
-                    capture_output=True, timeout=60, check=False)
-            except subprocess.TimeoutExpired:
-                raise PdfReadError('PDF exceeded the 60-second reading limit.') from None
+            run = run_reader(source, mode)
             if run.returncode or len(run.stdout) > 4 * 1024 * 1024:
                 raise PdfReadError('PDF could not be read within the preview limits.')
             try:
@@ -63,7 +95,6 @@ def extract(path, mode='custom_ai'):
 if __name__ == '__main__':
     if os.name == 'posix':
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (320*1024*1024, 320*1024*1024))
         resource.setrlimit(resource.RLIMIT_CPU, (50, 50))
     try:
         result = extract(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else 'custom_ai')

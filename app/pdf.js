@@ -36,6 +36,7 @@ function renderSecureEstimate(data){
   const search=$('review-search').value.trim().toLocaleLowerCase();for(const section of host.querySelectorAll('.estimate-item'))section.hidden=Boolean(search&&!section.dataset.search.includes(search));
 }
 window.renderSecureEstimate=renderSecureEstimate;
+window.clearSecureEstimate=()=>{estimate=null;copiedRows=[];dirty=false;revision+=1;$('save-review').disabled=true;};
 $('review-search').oninput=()=>{const search=$('review-search').value.trim().toLocaleLowerCase();for(const section of $('pdf-review').querySelectorAll('.estimate-item'))section.hidden=Boolean(search&&!section.dataset.search.includes(search));};
 $('save-review').onclick=async()=>{
   if(!estimate||!dirty)return;const savingEstimate=estimate,savingRevision=revision;$('save-review').disabled=true;$('review-state').textContent='Calculating measurement quantities…';
@@ -48,16 +49,17 @@ $('save-review').onclick=async()=>{
 };
 $('pdf-file').addEventListener('change',()=>{const file=$('pdf-file').files[0];$('read-pdf').disabled=!file||!window.secureApp?.canUse();if(file){$('pdf-status').textContent=file.name;$('status-title').textContent='PDF selected';$('status-detail').textContent=window.secureApp?.canUse()?'Select Read PDF to review this estimate.':'Sign in and activate access to read this PDF.';}});
 $('read-pdf').onclick=async()=>{
+  if(pdfReading||!window.secureApp?.canUse())return;const readingToken=token;
   const file=$('pdf-file').files[0];if(!file||!file.name.toLowerCase().endsWith('.pdf')||file.size>25*1024*1024){$('pdf-status').textContent='Choose a PDF no larger than 25 MB.';return;}
-  $('read-pdf').disabled=true;$('pdf-review').replaceChildren();$('pdf-status').textContent='Reading every page with the desktop trained reader…';$('status-title').textContent='Reading estimate PDF';$('status-detail').textContent=file.name;window.secureApp.setProgress(null,'Reading every page…');
+  pdfReading=true;$('read-pdf').disabled=true;$('pdf-review').replaceChildren();$('pdf-status').textContent='Reading every page with the desktop trained reader…';$('status-title').textContent='Reading estimate PDF';$('status-detail').textContent=file.name;window.secureApp.setProgress(null,'Reading every page…');
   try{
     const response=await fetch(api+'/v1/pdf/read',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/pdf','X-Reader-Mode':$('reader-mode').value},body:file,signal:AbortSignal.timeout(75000)});
-    const responseText=await response.text();let result;try{result=JSON.parse(responseText);}catch{throw Error(`PDF service returned HTTP ${response.status}. Please retry; no measurements were imported.`);}if(!response.ok){const error=Error(result.error||'PDF reading failed.');error.status=response.status;throw error;}if(!token)return;
+    const responseText=await response.text();if(token!==readingToken)return;let result;try{result=JSON.parse(responseText);}catch{throw Error(`PDF service returned HTTP ${response.status}. Please retry; no measurements were imported.`);}if(!response.ok){const error=Error(result.error||'PDF reading failed.');error.status=response.status;throw error;}if(!token)return;
     estimate={id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`,fileName:file.name,savedAt:new Date().toISOString(),items:result.items,notice:result.notice};
     renderSecureEstimate(estimate);window.secureApp.persistEstimate(estimate);window.secureApp.refreshOverview(estimate);window.secureApp.setProgress(100,`${result.items.length} items read. Review every measurement before entry.`);
     $('pdf-status').textContent=`${result.items.length} items read. ${result.notice}`;$('status-title').textContent='PDF reading complete';$('status-detail').textContent=`${result.items.length} item codes · ${result.items.reduce((sum,item)=>sum+(item.rows||[]).length,0)} measurement rows`;
     window.secureApp.setPage('review');window.secureApp.log(`Read ${file.name}: ${result.items.length} items`);
-  }catch(error){$('pdf-status').textContent=error.message;$('status-title').textContent='PDF reading needs attention';$('status-detail').textContent=error.message;window.secureApp.setProgress(0,error.message);if(error.status===402)await window.secureApp.refreshAccess();}
-  finally{$('read-pdf').disabled=!window.secureApp?.canUse()||!$('pdf-file').files?.length;}
+  }catch(error){if(token!==readingToken)return;$('pdf-status').textContent=error.message;$('status-title').textContent='PDF reading needs attention';$('status-detail').textContent=error.message;window.secureApp.setProgress(0,error.message);if(error.status===402)await window.secureApp.refreshAccess();}
+  finally{pdfReading=false;$('read-pdf').disabled=!window.secureApp?.canUse()||!$('pdf-file').files?.length;}
 };
 })();
