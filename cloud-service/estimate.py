@@ -11,7 +11,7 @@ import pdfplumber
 from openpyxl import load_workbook
 
 OCR_IMPORT_ERROR=(
-    'The built-in scanned-PDF reader is unavailable. Extract the complete SECURE Measurement Assistant ZIP, '    'keep the _internal folder beside SECURE-Assistant.exe, then run the EXE from that folder. '    'If Windows Security has quarantined a file, restore the SECURE Measurement Assistant folder and try again.'
+    'The built-in scanned-PDF reader is unavailable in the hosted workspace. Try a selectable-text PDF or use the Windows application.'
 )
 
 def ocr_reader_status():

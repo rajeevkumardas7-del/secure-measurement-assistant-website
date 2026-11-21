@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "version": "secure-local-ml-1",
+  "algorithm": "L2 logistic regression, supervised gradient descent",
+  "training_provenance": "Synthetic code formatting pairs and measurement/header/resource examples; no user PDFs used for training.",
+  "code": {
+    "features": [
+      "family_equal",
+      "section_equal",
+      "number_equal",
+      "suffix_equal",
+      "both_valid"
+    ],
+    "weights": [
+      7.158209606543336,
+      7.227908169229581,
+      7.297495146965955,
+      7.0080595805432475,
+      -11.68110592219793
+    ],
+    "bias": -13.694289132855204,
+    "threshold": 0.7
+  },
+  "row": {
+    "features": [
+      "serial_numeric",
+      "quantity_numeric",
+      "no_numeric",
+      "dimension_fraction",
+      "cf_numeric",
+      "description_present",
+      "heading",
+      "resource_unit",
+      "negative",
+      "has_dimensions"
+    ],
+    "weights": [
+      -0.808045244179512,
+      9.088008893479943,
+      4.892962902716186,
+      -0.3693300133039606,
+      0.11468822471740493,
+      -1.3538101901503776,
+      -6.285919012759702,
+      -4.790406305360841,
+      0.9018606541485484,
+      -0.22310733968940977
+    ],
+    "bias": -6.66140464819089,
+    "threshold": 0.7
+  },
+  "held_out_synthetic_metrics": {
+    "code": {
+      "samples": 700,
+      "true_positive": 200,
+      "true_negative": 500,
+      "false_positive": 0,
+      "false_negative": 0,
+      "accuracy": 1.0
+    },
+    "row": {
+      "samples": 600,
+      "true_positive": 300,
+      "true_negative": 300,
+      "false_positive": 0,
+      "false_negative": 0,
+      "accuracy": 1.0
+    }
+  }
+}

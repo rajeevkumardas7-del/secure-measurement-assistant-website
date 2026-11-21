@@ -1,17 +1,71 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="SECURE and E-MB browser workspace framework. Hosted portal automation is under preparation.">
-<title>Online workspace | SECURE</title><link rel="stylesheet" href="app.css"></head>
-<body><aside><a class="brand" href="../">S <span>SECURE<small>Online workspace</small></span></a><nav aria-label="Workspace"><button class="active" id="secure-tab" aria-pressed="true">SECURE Automation</button><button id="emb-tab" aria-pressed="false">E-MB Valuation</button><a href="../guide/">User guide</a><a href="../download/">Windows application</a></nav><p>Hosted browser framework<br><small>Preview · web-framework-1</small></p></aside>
-<main><header><div><p class="eyebrow">ENGINEERING WORKSPACE</p><h1 id="title">SECURE Automation</h1><p>Prepare, review and track your work online.</p></div><button id="theme">Dark mode</button></header>
-<section class="notice" aria-live="polite"><strong id="service">Checking service…</strong><p id="service-detail">Checking the hosted workspace configuration.</p></section>
-<section class="card"><h2>Account & access</h2><p id="access">Sign-in becomes available when the hosted service is connected. Existing trial and payment rules will be checked by the server.</p><div id="google-button"></div><button id="signout" hidden>Sign out</button></section>
-<div class="steps" aria-label="Workflow"><span>1 · Sign in</span><span>2 · Review data</span><span>3 · Portal login</span><span>4 · Enter</span><span>5 · Verify</span></div>
-<section class="card" id="secure-panel"><h2>Read estimate PDF</h2><p>Selectable-text PDFs only: up to 5 MB and 40 pages. Your PDF is processed temporarily on our server and deleted after reading. Review every extracted row before use.</p><label>Choose estimate PDF<input type="file" id="pdf-file" accept="application/pdf,.pdf" disabled></label><button id="read-pdf" disabled>Read PDF</button><p id="pdf-status" role="status"></p><div id="pdf-review"></div><h2>Hosted SECURE browser</h2><p>Your portal session will run on the server. You will complete portal sign-in and any CAPTCHA yourself.</p><p class="subtle">Live portal entry and browser interaction are awaiting implementation and deployment verification.</p><button disabled>Open hosted browser — unavailable</button></section>
-<section class="card" id="valuation-panel" hidden><h2>Full Valuation</h2><p>Add all activities, edit quantity and rates, then calculate. Expressions such as (6+5)/2 are preserved.</p>
-<fieldset id="editor" disabled><div class="fields"><label>Work code<input id="work-code" maxlength="128"></label><label>Total person days<input id="days" inputmode="decimal" value="0"></label><label>Current daily labour wage (₹)<input id="wage" inputmode="decimal" value="300"></label></div>
-<div class="table-scroll"><table><thead><tr><th>S.No.</th><th>Item code</th><th>Activity</th><th>Remaining Qty</th><th>New Qty</th><th>Unit rate</th><th>Labour rate</th><th>Amount</th><th>Labour amount</th><th>Action</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="actions"><button id="add">Add activity</button><button id="calculate" class="primary">Calculate totals</button><button id="export" disabled>Export calculation</button></div></fieldset>
-<div id="totals" class="totals" aria-live="polite">No calculation yet.</div><p id="errors" role="alert"></p></section>
-<section class="card"><h2>Availability</h2><div class="features"><div><strong>Valuation API</strong><p>Hosted calculations with server-verified Google sign-in.</p></div><div><strong>Portal automation</strong><p>Live portal actions remain disabled until hosted browser integration tests pass.</p></div><div><strong>PDF reading</strong><p>Selectable-text PDF review with the desktop parser. Scanned PDFs require the desktop OCR reader.</p></div></div></section>
-<footer>Preview only. No portal entries or payments are performed on this page.</footer></main><script src="app.js" defer></script><script src="pdf.js" defer></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="SECURE Measurement Assistant and E-MB workspace">
+  <title>SECURE Measurement Assistant</title><link rel="stylesheet" href="app.css"><link rel="stylesheet" href="workspace.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to workspace</a>
+  <aside class="rail">
+    <a class="brand" href="../" aria-label="SECURE Measurement Assistant"><b>S</b><span>SECURE<small>Measurement Assistant</small></span></a>
+    <p class="nav-label">WORKSPACE NAVIGATION</p><nav aria-label="Workspace">
+      <button class="active" data-page="overview">Overview</button>
+      <button data-page="new">New Entry</button>
+      <button data-page="resume">Resume Entry</button>
+      <button data-page="review">Review &amp; edit</button>
+      <button data-page="connect">Connect &amp; run</button>
+      <button data-page="library">PDF Library</button>
+      <button data-page="history">History</button>
+      <button data-page="emb">E-MB</button>
+      <button data-page="tools">Tools</button>
+    </nav>
+    <div class="rail-footer"><span>LOCAL WORKSPACE</span><p>Saved estimates stay in this browser. PDFs are processed securely online.</p><small>SECURE · Web workspace</small></div>
+  </aside>
+
+  <main id="main" tabindex="-1">
+    <header class="topbar">
+      <div><p class="eyebrow">SECURE WORKSPACE</p><h1 id="title">Your estimate overview</h1><p class="subtitle">Prepare, review and resume your estimates.</p></div>
+      <div class="account-area"><div class="account-card"><small>LOGGED IN AS</small><strong id="signed-in">Not signed in</strong></div><label class="text-size">TEXT SIZE<select id="text-size" aria-label="Text size"><option value="standard">Standard</option><option value="small">Small</option><option value="large">Large</option></select></label><button id="theme" aria-pressed="false">Dark mode</button></div>
+    </header>
+
+    <div class="workflow" aria-label="Estimate workflow">
+      <div class="workflow-line" id="workflow-line"></div>
+      <span class="step current"><b>1</b><span>Import</span></span><span class="step"><b>2</b><span>Review</span></span><span class="step"><b>3</b><span>Connect</span></span><span class="step"><b>4</b><span>Enter</span></span><span class="step"><b>5</b><span>Verify</span></span>
+    </div>
+
+    <section class="notice" aria-live="polite"><div class="notice-copy"><strong id="service">Checking service…</strong><p id="service-detail">Connecting to the SECURE workspace.</p><p id="access">Checking sign-in and access.</p><div id="payment-options" hidden><strong>Choose an access option</strong><p>₹100 for one month or ₹20 for one completed task. Use your signed-in Google email. Access opens after PayU payment verification.</p><div class="payment-buttons"><button id="subscribe" class="primary">Subscribe ₹100/month</button><button id="one-task">One task ₹20</button><button id="show-qr">Show PayU QR</button></div><div id="qr-panel" hidden><label>QR payment option<select id="qr-kind"><option value="monthly">Monthly subscription — ₹100</option><option value="task">One completed task — ₹20</option></select></label><img id="payu-qr" alt="PayU checkout QR code" hidden><p id="qr-status" role="status"></p></div></div></div><div class="notice-actions"><div id="google-button"></div><button id="signout" hidden>Sign out</button></div></section>
+
+    <section class="page" id="page-overview" data-heading="Your estimate overview">
+      <div class="welcome-strip"><div><p class="eyebrow">WELCOME</p><h2 id="welcome">Welcome to SECURE</h2><p>Your measurement workspace at a glance.</p></div><button class="primary" data-page="new">+ New Entry</button></div>
+      <div class="overview-metrics">
+<section class="card accent-teal"><h2>Current estimate</h2><small class="label">ACTIVE ESTIMATE</small><strong id="current-name">No estimate selected</strong><p id="current-detail">0 items · 0 measurement rows</p><div class="estimate-state"><span id="current-state">No estimate selected</span></div><button class="wide" data-page="review">Review measurements</button></section><section class="card accent-orange"><h2>Measurement checks</h2><div class="metric" id="verified-count">0%</div><p id="check-detail">Check source totals before entry.</p></section><section class="card"><h2>PDFs in library</h2><strong class="metric-value" id="library-count">0</strong><p>Saved estimates in this browser</p><button data-page="library">Open library</button></section><section class="card"><h2>Account access</h2><strong class="metric-value" id="overview-access">Sign in required</strong><p id="overview-countdown">Your access is checked securely.</p><button id="view-access">View subscription</button></section></div>
+      <div class="overview-panels"><section class="card accent-violet"><h2>Start new entry</h2><div class="estimate-mark" aria-hidden="true"><span></span><i></i></div><p>Import a PDF estimate. Review its measurements before entry.</p><button class="primary wide" data-page="new">Upload PDF</button><button class="wide" data-page="resume">Resume saved estimate</button></section><section class="card accent-blue"><h2>PDF reading progress</h2><div class="line-chart" aria-hidden="true"><span class="chart-dot"></span><svg viewBox="0 0 700 60" preserveAspectRatio="none"><path d="M8 43 L110 33 L200 36 L300 24 L395 31 L490 15 L585 23 L690 8"/></svg></div><label class="reader-choice">PDF reader<select id="reader-mode"><option value="custom_ai">Trained AI reader • built in</option><option value="standard">Standard PDF reader</option></select></label><p id="reader-status">Choose a document to begin.</p><div class="meter"><span id="reader-meter"></span></div><strong class="progress-label" id="reader-count">0% complete</strong></section><section class="card accent-blue recent-card"><h2>Recent estimates</h2><div class="table-scroll"><table><thead><tr><th>S. NO.</th><th>DOCUMENT</th><th>VERIFIED</th><th>STATUS</th></tr></thead><tbody id="recent-estimates"><tr><td colspan="4">No saved estimates</td></tr></tbody></table></div><button class="wide" data-page="library">View library</button></section><section class="card"><h2>Workspace shortcuts</h2><div class="shortcut-grid"><button data-page="review">Review &amp; edit</button><button data-page="connect">Connect &amp; run</button><button data-page="emb">E-MB valuation</button><button data-page="history">History</button></div><p>Import → Review → Connect → Enter → Verify</p></section></div>
+    </section>
+
+    <section class="page" id="page-new" data-heading="New Entry" hidden>
+      <section class="card accent-violet"><h2>Start new entry</h2><p>Import a PDF estimate. Review its measurements before entry.</p><label class="file-pick">Choose estimate PDF<input type="file" id="pdf-file" accept="application/pdf,.pdf"></label><button id="read-pdf" class="primary" disabled>Read PDF</button><p id="pdf-status" role="status"></p><div class="meter"><span id="new-reader-meter"></span></div></section>
+    </section>
+
+    <section class="page" id="page-resume" data-heading="Resume Entry" hidden><section class="card"><h2>Resume saved estimate</h2><p>Open an estimate saved in this browser to continue its review.</p><div id="resume-list" class="saved-list">No saved estimates.</div></section></section>
+    <section class="page" id="page-review" data-heading="Review & edit" hidden><section class="card"><h2>Review measurements</h2><p>Compare every extracted item and measurement with the source PDF before continuing.</p><div class="review-tools"><label>Search item code or description<input id="review-search" type="search" placeholder="Search estimate"></label><button id="save-review" class="primary" disabled>Save changes</button><span id="review-state" role="status"></span></div><div id="pdf-review"></div></section></section>
+    <section class="page" id="page-connect" data-heading="Connect & run" hidden><section class="card accent-orange"><h2>Connect to the selected SECURE work</h2><p id="connect-status">Sign in, open the matching work and verify the estimate before starting automation.</p><p class="subtle">The hosted portal worker is not connected to the desktop browser automation yet. No portal data is entered from this page.</p><button disabled>Open hosted browser — unavailable</button></section></section>
+    <section class="page" id="page-library" data-heading="PDF Library" hidden><section class="card"><h2>PDF Library</h2><p>Saved estimates available in this browser.</p><div id="library-list" class="saved-list">No saved estimates.</div></section></section>
+    <section class="page" id="page-history" data-heading="History" hidden><section class="card"><h2>Estimate history</h2><div class="table-scroll"><table><thead><tr><th>S. NO.</th><th>ESTIMATE</th><th>ITEMS</th><th>MEASUREMENTS</th><th>LAST SAVED</th></tr></thead><tbody id="history-list"><tr><td colspan="5">No saved estimates</td></tr></tbody></table></div></section></section>
+
+    <section class="page" id="page-emb" data-heading="E-MB" hidden>
+      <section class="card accent-teal"><h2>Full Valuation</h2><p>Review activity and remaining quantity, edit New Qty, and calculate totals.</p>
+        <fieldset id="editor" disabled><div class="fields"><label>Work code<input id="work-code" maxlength="128"></label><label>Total person days<input id="days" inputmode="decimal" value="0"></label><label>Current daily labour wage (₹)<input id="wage" inputmode="decimal" value="300"></label></div>
+        <div class="table-scroll"><table><thead><tr><th>S. No.</th><th>Item code</th><th>Activity</th><th>Remaining Qty</th><th>New Qty</th><th>Unit rate</th><th>Labour rate</th><th>Amount</th><th>Labour amount</th><th>Action</th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div class="actions"><button id="add">Add activity</button><button id="calculate" class="primary">Calculate totals</button><button id="export" disabled>Export calculation</button></div></fieldset>
+        <div id="totals" class="totals" aria-live="polite">No calculation yet.</div><p id="errors" role="alert"></p>
+      </section>
+    </section>
+    <section class="page" id="page-tools" data-heading="Tools" hidden><section class="card"><h2>Tools &amp; PDF compressor</h2><p>Use the Windows application for document utilities that are not available in the website workspace.</p><a class="download-link" href="../download/">Open Windows application downloads</a></section></section>
+
+    <div class="statusbar"><div><strong id="status-title">Ready to begin</strong><p id="status-detail">SECURE estimate workspace</p></div></div>
+    <footer><span>Online workspace</span><span>·</span><span id="footer-access">Sign in to continue</span><span class="footer-actions"><button data-page="history">Show summary</button><button id="export-log">Export log</button></span></footer>
+  </main>
+  <script src="app.js" defer></script><script src="pdf.js" defer></script>
+</body>
+</html>

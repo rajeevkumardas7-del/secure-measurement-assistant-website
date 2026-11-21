@@ -3,7 +3,7 @@ import unittest
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 from pdf_reader import read_upload
-from estimate import _secure_print_measurement_row
+from estimate import _secure_print_measurement_row, ocr_reader_status
 
 def fixture(lines):
     writer=PdfWriter(); page=writer.add_blank_page(width=612,height=792)
@@ -18,8 +18,10 @@ def fixture(lines):
 class PdfTests(unittest.TestCase):
     def test_invalid_file(self):
         with self.assertRaises(ValueError):read_upload(b'not a PDF')
-    def test_blank_pdf_requires_ocr(self):
-        with self.assertRaisesRegex(ValueError,'OCR'):read_upload(fixture([]))
+    def test_blank_pdf_reports_no_items_after_reader_path(self):
+        ready, _ = ocr_reader_status()
+        message = 'No SECURE item codes' if ready else 'scanned-PDF reader is unavailable'
+        with self.assertRaisesRegex(ValueError,message):read_upload(fixture([]))
     def test_formula_and_blank_cells(self):
         row=_secure_print_measurement_row('1 formula 2 (6+5)/2 3 33.0000 -')
         self.assertEqual(row['l'],'(6+5)/2')

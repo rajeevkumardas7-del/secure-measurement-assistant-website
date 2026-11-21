@@ -3,7 +3,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY domain.py server.py ./
-COPY estimate.py pdf_reader.py ./
+COPY estimate.py pdf_reader.py trained_reader.py secure-reader-model.json reader-catalog.json ./
 COPY test_framework.py test_api.py test_pdf.py ./
 RUN python -m unittest discover -v
 RUN useradd --uid 10001 --create-home app && mkdir /data && chown app /data

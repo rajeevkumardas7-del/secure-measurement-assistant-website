@@ -1,5 +1,7 @@
 {
   "apiBase": "https://secure-web-valuation-preview.onrender.com",
   "googleClientId": "101351300378-sok2afkq0u36c2lg14d1iv5rg1n85vet.apps.googleusercontent.com",
-  "release": "web-framework-1"
+  "release": "web-framework-1",
+  "subscriptionUrl": "https://u.payu.in/PAYUMN/BrHLesV2CX8D",
+  "perEstimatePaymentUrl": "https://u.payu.in/PAYUMN/RryLWsA2GXvM"
 }

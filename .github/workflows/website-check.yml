@@ -1,0 +1,18 @@
+name: Website service checks
+on:
+  push:
+    branches: [publish/canva-workspace]
+  pull_request:
+    paths: ['app/**', 'cloud-service/**', '.github/workflows/website-check.yml']
+permissions:
+  contents: read
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check browser scripts
+        run: node --check app/app.js && node --check app/pdf.js
+      - name: Build and test hosted service
+        run: docker build -t secure-web-test cloud-service

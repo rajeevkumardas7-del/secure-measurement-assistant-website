@@ -4,13 +4,15 @@ Deploy separately from GitHub Pages. Google identity and access are checked
 against the existing licensing service for every protected request.
 """
 import json
+import base64
+from io import BytesIO
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.parse import urlparse
 from domain import Jobs, calculate
-from pdf_reader import read_upload, MAX_BYTES
+from pdf_reader import read_upload, MAX_BYTES, PdfReadError
 
 ORIGIN = os.environ.get('WEB_ORIGIN','https://securemeasurementassistant.info')
 LICENSE_URL = os.environ.get('LICENSE_URL','')
@@ -24,8 +26,8 @@ def access(token):
         data=json.dumps({'idToken':token}).encode(), headers={'Content-Type':'application/json'})
     with urlopen(request,timeout=15) as response:
         state = json.load(response)
-    if not state.get('userId') or not state.get('accessAllowed'):
-        raise PermissionError('Active trial, subscription or task credit required.')
+    if not state.get('userId'):
+        raise PermissionError('Google account could not be verified.')
     return state
 
 class Handler(BaseHTTPRequestHandler):
@@ -45,13 +47,20 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get('Origin') != ORIGIN: return self.send(403,{'error':'Origin denied.'})
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin',ORIGIN)
-        self.send_header('Access-Control-Allow-Headers','Authorization, Content-Type')
+        self.send_header('Access-Control-Allow-Headers','Authorization, Content-Type, X-Reader-Mode')
         self.send_header('Access-Control-Allow-Methods','GET, POST, OPTIONS')
         self.end_headers()
     def do_GET(self):
         if self.path == '/health':
+            from estimate import ocr_reader_status
+            from trained_reader import load_model
+            try:
+                load_model(); trained_reader_ready = True
+            except (OSError, ValueError, KeyError, TypeError):
+                trained_reader_ready = False
+            scanned_reader_ready, _ = ocr_reader_status()
             return self.send(200,{'status':'ok','version':'web-framework-1',
-                'capabilities':{'valuation':True,'portalAutomation':False,'pdfReading':True,'scannedPdfReading':False},
+            'capabilities':{'valuation':True,'portalAutomation':False,'pdfReading':True,'trainedPdfReader':trained_reader_ready,'scannedPdfReading':scanned_reader_ready},
                 'licenseConfigured':LICENSE_URL.startswith('https://')})
         self.handle_api()
     def do_POST(self): self.handle_api()
@@ -61,20 +70,55 @@ class Handler(BaseHTTPRequestHandler):
             token = self.headers.get('Authorization','')
             if not token.startswith('Bearer '): raise PermissionError('Sign in required.')
             state = access(token[7:]); owner = state['userId']
+            route = urlparse(self.path).path
+            if route not in ('/v1/access', '/v1/payment/qr') and not state.get('accessAllowed'):
+                return self.send(402, {'error':'Trial or paid access is required to continue.','access':state.get('access','subscription_required')})
             if self.path == '/v1/pdf/read' and self.command == 'POST':
                 size = int(self.headers.get('Content-Length', '0'))
                 if self.headers.get('Content-Type', '').split(';')[0] != 'application/pdf' or not 0 < size <= MAX_BYTES:
-                    raise ValueError('Choose a PDF no larger than 5 MB.')
-                return self.send(200, read_upload(self.rfile.read(size)))
+                    return self.send(422, {'error':'Choose a PDF no larger than 25 MB.'})
+                try:
+                    mode = self.headers.get('X-Reader-Mode', 'custom_ai')
+                    result = read_upload(self.rfile.read(size), mode)
+                except PdfReadError as exc:
+                    return self.send(422, {'error':str(exc)})
+                return self.send(200, result)
             payload = {}
             if self.command == 'POST':
                 size = int(self.headers.get('Content-Length','0'))
                 if not 0 < size <= 1000000: raise ValueError('Request must be smaller than 1 MB.')
                 payload = json.loads(self.rfile.read(size))
                 if not isinstance(payload,dict): raise ValueError('JSON object required.')
-            route = urlparse(self.path).path
             if route == '/v1/access' and self.command == 'GET': return self.send(200,state)
+            if route == '/v1/payment/qr' and self.command == 'POST':
+                payment_url = str(payload.get('url') or '')
+                parsed = urlparse(payment_url)
+                host = (parsed.hostname or '').lower()
+                if parsed.scheme != 'https' or host != 'u.payu.in':
+                    raise ValueError('Choose an official PayU checkout link.')
+                import qrcode
+                from qrcode.image.svg import SvgPathImage
+                code = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=2)
+                code.add_data(payment_url)
+                image = code.make_image(image_factory=SvgPathImage)
+                output = BytesIO(); image.save(output)
+                return self.send(200, {'image':'data:image/svg+xml;base64,'+base64.b64encode(output.getvalue()).decode('ascii')})
             if route == '/v1/valuation' and self.command == 'POST': return self.send(200,calculate(payload))
+            if route == '/v1/measurements/calculate' and self.command == 'POST':
+                rows = payload.get('rows')
+                if not isinstance(rows, list) or len(rows) > 5000: raise ValueError('Supply at most 5,000 measurement rows.')
+                from estimate import _annotate_deduction_row, _calculated_measurement_quantity
+                calculated = []
+                for source in rows:
+                    if not isinstance(source, dict): raise ValueError('Invalid measurement row.')
+                    row = dict(source)
+                    quantity = _calculated_measurement_quantity(row)
+                    if quantity is not None: row['quantity'] = quantity
+                    elif any(str(row.get(key, '') or '').strip() not in ('', '-') for key in ('no','l','b','d','cf')):
+                        row['warning'] = 'Measurement expressions could not be calculated; check this row.'
+                    _annotate_deduction_row(row)
+                    calculated.append({key:row.get(key, '') for key in ('quantity','deduction','entry_section','warning')})
+                return self.send(200, {'rows':calculated})
             if route == '/v1/jobs' and self.command == 'POST':
                 # No task credit is consumed until a worker verifies all portal saves.
                 return self.send(503,{'error':'Hosted portal execution is awaiting deployment and live verification.'})
