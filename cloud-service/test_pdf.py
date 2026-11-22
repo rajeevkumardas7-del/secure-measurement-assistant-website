@@ -18,6 +18,18 @@ def fixture(lines):
     output=io.BytesIO();writer.write(output);return output.getvalue()
 
 class PdfTests(unittest.TestCase):
+    def test_ocr_band_overlap_keeps_each_line_once(self):
+        from types import SimpleNamespace
+        from estimate import _read_ocr_bands
+        image = SimpleNamespace(width=100, height=600, crop=lambda bounds: bounds)
+        def reader(bounds):
+            top, bottom = bounds[1], bounds[3]
+            return [([[0,y-top-5],[90,y-top-5],[90,y-top+5],[0,y-top+5]], str(y), .99)
+                    for y in (250,256,512) if top < y < bottom], None
+        rows = _read_ocr_bands(reader, SimpleNamespace(array=lambda value: value), image)
+        self.assertEqual([row[1] for row in rows], ['250','256','512'])
+        self.assertEqual([sum(p[1] for p in row[0])/4 for row in rows], [250,256,512])
+
     def test_image_only_pdf_reads_item_and_measurement(self):
         import pypdfium2 as pdfium
         from pypdf import PdfReader
