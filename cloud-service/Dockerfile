@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
-ENV OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+ENV OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MALLOC_ARENA_MAX=2 MALLOC_TRIM_THRESHOLD_=65536 MALLOC_MMAP_THRESHOLD_=65536
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY domain.py server.py ./
