@@ -1055,7 +1055,9 @@ def read_scanned_secure_pdf(path,catalog=None,progress=None):
         document=pdfium.PdfDocument(str(path))
         # Bound detection tensors on the hosted service; recognition keeps the original crops.
         reader=RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1,
-                        det_limit_type='max', det_limit_side_len=960, rec_batch_num=1)
+                        max_side_len=1400, rec_batch_num=1)
+        # RapidOCR 1.4.4 ignores det_limit_type kwargs; its detector reads this field.
+        reader.text_det.limit_type='max'
     except (ImportError, OSError, RuntimeError) as error:
         raise ValueError(f'{OCR_IMPORT_ERROR} Details: {error}') from error
     items=[];current=None;measuring=False;head='';columns={};summary={}
