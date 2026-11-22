@@ -11,7 +11,7 @@ import pdfplumber
 from openpyxl import load_workbook
 
 OCR_IMPORT_ERROR=(
-    'The built-in scanned-PDF reader is unavailable. Extract the complete SECURE Measurement Assistant ZIP, '    'keep the _internal folder beside SECURE-Assistant.exe, then run the EXE from that folder. '    'If Windows Security has quarantined a file, restore the SECURE Measurement Assistant folder and try again.'
+    'The built-in scanned-PDF reader is unavailable in the hosted workspace. Try a selectable-text PDF or use the Windows application.'
 )
 
 def ocr_reader_status():
@@ -992,6 +992,20 @@ def _trim_scan_margins(image):
     if right-left<width*.45 or bottom-top<height*.35:return image
     return image.crop((left,top,right,bottom))
 
+def _read_ocr_bands(reader,np,image):
+    """Read overlapping strips so full-page OCR tensors do not exhaust the host."""
+    result=[]
+    for start in range(0,image.height,256):
+        top=max(0,start-64); end=min(image.height,start+256)
+        band=image.crop((0,top,image.width,min(image.height,end+64)))
+        entries,_=reader(np.array(band))
+        for box,text,*rest in entries or []:
+            center=sum(point[1] for point in box)/len(box)+top
+            if start <= center < end:
+                result.append(([[x,y+top] for x,y in box],text,*rest))
+    return result
+
+
 def _read_ocr_page(reader,np,image):
     """Choose the clearest orientation and contrast for a scanned page."""
     from PIL import ImageOps, ImageEnhance
@@ -1003,7 +1017,7 @@ def _read_ocr_page(reader,np,image):
     candidates=[source]
     best_result=[];best_image=source;best_score=-1
     for candidate in candidates:
-        result,_=reader(np.array(candidate));score=_ocr_score(result)
+        result=_read_ocr_bands(reader,np,candidate);score=_ocr_score(result)
         if score>best_score:best_result,best_image,best_score=result,candidate,score
         text = ' '.join(str(entry[1]) for entry in (result or []))
         confidence = sum(float(entry[2]) for entry in (result or [])) / max(1,len(result or []))
@@ -1012,14 +1026,14 @@ def _read_ocr_page(reader,np,image):
         if confidence >= .90 and re.search(r'quantity|description|unskilled',text,re.I):
             break
     if best_score < 100:
-        result,_=reader(np.array(normalized)); score=_ocr_score(result)
+        result=_read_ocr_bands(reader,np,normalized); score=_ocr_score(result)
         if score>best_score: best_result,best_image,best_score=result,normalized,score
     # A sidewise page seldom has readable SECURE codes. Only spend the extra
     # OCR time on rotations when the normal orientation found none.
     if best_score<100:
         for angle in (90,270,180):
             candidate=source.rotate(angle,expand=True)
-            result,_=reader(np.array(candidate));score=_ocr_score(result)
+            result=_read_ocr_bands(reader,np,candidate);score=_ocr_score(result)
             if score>best_score:best_result,best_image,best_score=result,candidate,score
     return best_result,best_image
 
@@ -1053,7 +1067,11 @@ def read_scanned_secure_pdf(path,catalog=None,progress=None):
         import pypdfium2 as pdfium
         from rapidocr_onnxruntime import RapidOCR
         document=pdfium.PdfDocument(str(path))
-        reader=RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1)
+        # Bound detection tensors on the hosted service; recognition keeps the original crops.
+        reader=RapidOCR(intra_op_num_threads=2, inter_op_num_threads=1,
+                        max_side_len=1400, rec_batch_num=1)
+        # RapidOCR 1.4.4 ignores det_limit_type kwargs; its detector reads this field.
+        reader.text_det.limit_type='max'
     except (ImportError, OSError, RuntimeError) as error:
         raise ValueError(f'{OCR_IMPORT_ERROR} Details: {error}') from error
     items=[];current=None;measuring=False;head='';columns={};summary={}

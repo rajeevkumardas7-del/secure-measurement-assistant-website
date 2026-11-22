@@ -2,13 +2,21 @@
 
 Status: framework, not a production portal automation service.
 
-Selectable PDF preview: authenticated `POST /v1/pdf/read` accepts raw
-`application/pdf`, up to 5 MB and 40 pages. The desktop estimate.py parser is
-vendored from the editable SECURE source. Processing runs in a temporary child
-process (60-second timeout, Linux CPU/address-space limits, one reader at once).
-Temporary files are removed on completion or failure. No estimates are saved.
-Scanned PDFs are explicitly rejected until hosted OCR is verified. Extraction
-requires user review and is never an authorization to submit portal entries.
+PDF preview: authenticated `POST /v1/pdf/read` accepts raw `application/pdf`,
+up to 25 MB and 40 pages. It uses the desktop app's `read_pdf_custom_ai` reader
+and trained model from the editable SECURE source, including its scanned-PDF
+OCR path. Processing runs in a temporary child process (60-second timeout,
+Linux CPU/resident-memory limits (384 MB per reader), one reader at once). Temporary files are
+removed on completion or failure. No estimates are saved on the server.
+Extraction requires user review and is never an authorization to submit portal
+entries. Live OCR performance on the hosted free instance still needs a real
+scan check.
+
+Protected PDF and valuation requests recheck server access. `/v1/access` and
+the authenticated PayU QR endpoint remain available to signed-in users after
+trial expiry so the Overview can show payment choices. PayU checkout URLs are
+public links copied from the desktop app configuration; the existing licensing
+service verifies its PayU webhook before granting access.
 
 ## Boundaries
 
@@ -61,8 +69,9 @@ server before sharing access between desktop and web clients.
    limits and restricted egress. Exact portal origins only; no public CDP.
 3. Provide authenticated session-bound interactive browser access for login,
    OTP and CAPTCHA. Never store portal passwords or expose sessions by job ID.
-4. Port desktop PDF extraction and measurement review. Preserve expressions,
-   blank dimensions, repeated item codes, and separate deduction rows.
+4. Complete the website port of the desktop workflow and E-MB portal data
+   pages. Preserve expressions, blank dimensions, repeated item codes, and
+   separate deduction rows.
 5. Port two-pass item/measurement automation and read-back verification.
    Resume must compare saved portal rows to avoid duplicates after failure.
 6. Add worker leases, cancellation, retention/purge, upload limits, TLS,

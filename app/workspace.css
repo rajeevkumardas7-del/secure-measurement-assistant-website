@@ -1,0 +1,39 @@
+/* Canva workspace: shared presentation only; desktop workflow controls stay intact. */
+:root{--rail:#402477;--accent:#59369f;--muted:#586174;--line:#e5e3ed;--shadow:0 4px 20px #26204406}
+body{background:#f6f5fa;color:#182334}
+.rail{flex-basis:238px;padding:26px 18px;gap:18px;background:var(--rail)}
+.brand{font-size:23px}.brand small{font-size:12px;line-height:1.5}.brand b{display:none}
+.nav-label{margin:14px 10px 0;color:#d4c6f1;font-size:10px;font-weight:700;letter-spacing:1.2px}
+.rail nav{counter-reset:workspace;gap:4px}.rail nav button{counter-increment:workspace;border-radius:9px;padding:12px 10px;font-size:13px;display:flex;align-items:center;gap:12px}
+.rail nav button:before{content:counter(workspace,decimal-leading-zero);font-size:10px;font-weight:500;opacity:.8}
+.rail nav button.active{background:#ffffff24;color:white}.rail-footer{padding:14px 10px;background:#ffffff12;border-radius:10px}.rail-footer p{font-size:12px;max-width:none;margin-bottom:10px}
+main{align-self:flex-start;margin:0 auto;padding:22px 26px;max-width:1800px}
+.topbar{padding-bottom:18px;border-bottom:1px solid var(--line);flex-wrap:wrap}.topbar h1{font-size:23px;color:#182334}.eyebrow{color:var(--accent)}
+.account-area{gap:8px;flex-wrap:wrap}.account-card{min-width:180px;padding:9px 12px;border-radius:9px;box-shadow:none}.account-card strong{font-size:13px}.account-card small,.text-size{color:var(--muted)}
+.text-size select{min-width:100px}.notice{min-height:0;background:#faf7ee;border-color:#e9d8af;border-radius:10px;padding:12px 16px}.notice-actions{flex-wrap:wrap}
+.welcome-strip{margin:18px 0;gap:16px}.welcome-strip h2{font-size:25px;color:#182334}.welcome-strip p:last-child{font-size:13px}
+.overview-metrics{display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:14px;margin-bottom:16px}
+.overview-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{padding:20px;border-radius:13px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.card h2{color:#182334;font-size:16px}.card p{font-size:13px;line-height:1.6}.overview-metrics .card h2{font-size:12px;font-weight:500;color:var(--muted)}
+.metric-value{display:block;font-size:24px;line-height:1.3;overflow-wrap:anywhere}.metric{display:block;border:0;border-radius:0;width:auto;height:auto;font-size:26px;color:#182334}
+.overview-metrics #current-name{font-size:17px;overflow-wrap:anywhere}.overview-metrics .card{display:flex;flex-direction:column;align-items:flex-start}.overview-metrics .card button{margin-top:auto}
+.overview-metrics #overview-access{font-size:18px}.overview-panels .recent-card .table-scroll{max-height:180px;min-height:92px}
+.shortcut-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.estimate-mark{height:20px;padding-left:8px}
+button,.download-link{border-radius:7px;min-height:40px;color:#28344a}.primary{background:#59369f!important;border-color:#59369f!important}.wide{margin-top:9px}
+.workflow{border-radius:10px;background:var(--card)}.workflow-line:after{background:#59369f}.step.current b,.step.done b{background:#59369f}
+.meter span{background:#168777}.line-chart{background:#f3f0f9}.line-chart path{stroke:#168777}.progress-label{color:#147969}
+table{font-size:13px}th{font-size:12px;background:#f3f1f8;color:#46516b;padding:12px}td{padding:10px}#rows input{min-height:40px}#page-emb .table-scroll{min-height:360px;max-height:70vh}thead th{position:sticky;top:0;z-index:1}
+.statusbar{background:#eef5f2;border-color:#d7e5df;border-radius:9px}.statusbar strong{color:#176653}
+.skip-link{position:fixed;top:-80px;left:16px;z-index:20;background:var(--card);color:var(--accent);padding:12px}.skip-link:focus{top:12px}
+body.dark{--rail:#241c3b;--card:#192333;--line:#3b465b;--muted:#bac4d4;--accent:#c6afff;background:#101722;color:#eef3fa}
+body.dark .eyebrow,body.dark .progress-label{color:#b9a2f6}body.dark .card h2,body.dark .topbar h1,body.dark .welcome-strip h2,body.dark .metric{color:#eef3fa}
+body.dark .overview-metrics .card h2{color:var(--muted)}body.dark .account-card,body.dark button,body.dark input,body.dark select,body.dark .workflow{background:var(--card);color:#eef3fa}
+body.dark .notice{background:#29261f;border-color:#796344}body.dark .line-chart,body.dark th{background:#242e40}body.dark th{color:#eef3fa}body.dark .statusbar strong{color:#93d7be}
+body.text-large .card p,body.text-large button,body.text-large input,body.text-large table{font-size:16px}body.text-large .rail nav button{font-size:16px}
+@media(max-width:1250px){.overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.rail{flex-basis:210px}.topbar{align-items:flex-start}.account-card{min-width:160px}}
+@media(max-width:760px){.rail{width:100%;height:auto;padding:16px}.nav-label{display:none}.rail nav button{flex:none}.rail nav button:before{display:none}body{display:block}main{padding:16px}.topbar{display:block}.account-area{flex-direction:row;align-items:center;margin-top:16px}.overview-panels{grid-template-columns:1fr}.notice{flex-direction:column;align-items:flex-start}.welcome-strip h2{font-size:22px}.card{padding:16px}.rail-footer{display:none}.fields{grid-template-columns:1fr}.saved-estimate{flex-wrap:wrap}}
+@media(max-width:460px){.overview-metrics{grid-template-columns:1fr}.account-card{max-width:100%;flex:1}.account-card strong{max-width:100%}.welcome-strip{flex-wrap:wrap}.shortcut-grid{grid-template-columns:1fr}footer{flex-wrap:wrap}.footer-actions{margin-left:0}.step{min-width:42px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+body.dark .rail nav button{background:transparent;color:#eef3fa}body.dark .rail nav button.active,body.dark .rail nav button:hover{background:#ffffff24}

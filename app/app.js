@@ -1,64 +1,100 @@
 'use strict';
 const $ = id => document.getElementById(id);
-let token = '', api = '', result = null;
-function switchPage(emb) {
-  $('title').textContent = emb ? 'E-MB Valuation' : 'SECURE Automation';
-  $('secure-panel').hidden = emb; $('valuation-panel').hidden = !emb;
-  for (const [id, active] of [['emb-tab',emb],['secure-tab',!emb]]) {
-    $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', String(active));
-  }
+const PAGE_TITLES = {overview:'Your estimate overview',new:'New Entry',resume:'Resume Entry',review:'Review & edit',connect:'Connect & run',library:'PDF Library',history:'History',emb:'E-MB',tools:'Tools'};
+let token = '', api = '', result = null, license = null, estimate = null, page = 'overview', trialEndsAt = null, trialTimer = null, countdownTimer = null, paymentPollTimer = null, storageKey = '', runtimeConfig = {}, refreshingAccess = false;
+let pdfReading = false, valuationBusy = false;
+const activityLog = [];
+function log(message){activityLog.push({time:new Date().toISOString(),message});if(activityLog.length>100)activityLog.shift();}
+function setPage(next){
+  if(next==='secure')next='overview';if(next==='E-MB')next='emb';if(!PAGE_TITLES[next])return;
+  page=next;document.querySelectorAll('.page').forEach(section=>section.hidden=section.id!==`page-${next}`);
+  $('title').textContent=PAGE_TITLES[next];document.querySelectorAll('.rail nav [data-page]').forEach(button=>{button.classList.toggle('active',button.dataset.page===next);button.setAttribute('aria-current',button.dataset.page===next?'page':'false');});
+  const workflowStep={overview:0,new:0,resume:1,review:1,connect:2,emb:3,library:1,history:4,tools:4}[next]||0;
+  document.querySelectorAll('.step').forEach((step,index)=>{step.classList.toggle('current',index===workflowStep);step.classList.toggle('done',index<workflowStep);});
+  $('workflow-line').style.setProperty('--workflow-progress',`${workflowStep*25}%`);
+  document.querySelectorAll('[data-page]').forEach(button=>{if(!button.closest('nav'))button.setAttribute('aria-current',button.dataset.page===next?'page':'false');});
+  if(next==='review'&&estimate)window.renderSecureEstimate?.(estimate);
+  log(`Opened ${PAGE_TITLES[next]}`);window.scrollTo({top:0,behavior:'smooth'});
 }
-$('emb-tab').onclick = () => switchPage(true);
-$('secure-tab').onclick = () => switchPage(false);
-$('theme').onclick = () => { const dark = document.body.classList.toggle('dark'); $('theme').textContent = dark ? 'Light mode' : 'Dark mode'; };
-function invalidate(){ result=null; $('export').disabled=true; $('totals').textContent='Recalculate after changing data.'; }
-function addRow() {
-  const row = document.createElement('tr'); const serial=document.createElement('td'); row.append(serial);
-  for (const [key,label] of [['code','Item code'],['name','Activity'],['remaining','Remaining quantity'],['quantity','New quantity'],['rate','Unit rate'],['labourRate','Labour rate']]) {
-    const cell=document.createElement('td'), input=document.createElement('input'); input.dataset.key=key;
-    input.setAttribute('aria-label',label); input.maxLength=key==='name'?1000:128; input.oninput=invalidate; cell.append(input); row.append(cell);
-  }
-  row.append(document.createElement('td'),document.createElement('td'));
-  const action=document.createElement('td'), remove=document.createElement('button'); remove.textContent='Delete';
-  remove.onclick=()=>{row.remove();renumber();invalidate();};action.append(remove);row.append(action);$('rows').append(row);renumber();invalidate();
+document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener('click',()=>setPage(button.dataset.page)));
+document.querySelectorAll('.rail nav button').forEach(button=>button.setAttribute('aria-current',button.dataset.page==='overview'?'page':'false'));
+try{if(localStorage.getItem('secure-assistant-theme')==='dark'){document.body.classList.add('dark');$('theme').textContent='Light mode';$('theme').setAttribute('aria-pressed','true');}}catch{}
+$('theme').onclick=()=>{const dark=document.body.classList.toggle('dark');$('theme').textContent=dark?'Light mode':'Dark mode';$('theme').setAttribute('aria-pressed',String(dark));try{localStorage.setItem('secure-assistant-theme',dark?'dark':'light');}catch{}};
+if($('reader-mode'))$('reader-mode').onchange=()=>{log(`Selected ${$('reader-mode').selectedOptions[0].textContent}`);};
+function savePreferences(){try{localStorage.setItem('secure-assistant-text-size',$('text-size').value);}catch{}}
+try{const size=localStorage.getItem('secure-assistant-text-size');if(size&&['small','standard','large'].includes(size))$('text-size').value=size;}catch{}
+document.body.classList.toggle('text-small',$('text-size').value==='small');document.body.classList.toggle('text-large',$('text-size').value==='large');
+$('text-size').onchange=()=>{document.body.classList.toggle('text-small',$('text-size').value==='small');document.body.classList.toggle('text-large',$('text-size').value==='large');savePreferences();};
+function setProgress(value,label){const reading=value===null;for(const meter of document.querySelectorAll('.meter'))meter.classList.toggle('is-indeterminate',reading);document.querySelector('.line-chart').classList.toggle('is-reading',reading);if(reading)$('reader-count').textContent='Reading…';else{value=Math.max(0,Math.min(100,Number(value)||0));$('reader-meter').style.width=`${value}%`;$('new-reader-meter').style.width=`${value}%`;$('reader-count').textContent=`${value}% complete`;}if(label)$('reader-status').textContent=label;}
+function trialText(){if(trialEndsAt===null)return '';const seconds=Math.max(0,Math.floor((trialEndsAt-Date.now())/1000)),d=Math.floor(seconds/86400),h=Math.floor(seconds%86400/3600),m=Math.floor(seconds%3600/60);return `${d}d ${h}h ${m}m remaining`;}
+function idTokenClaims(value){try{const encoded=value.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'),binary=atob(encoded.padEnd(Math.ceil(encoded.length/4)*4,'='));return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary,char=>char.charCodeAt(0))));}catch{return {};}}
+function hasAccess(){const kind=String(license?.access||license?.status||'').toLowerCase();return Boolean(license?.accessAllowed)&&!(kind==='trial'&&trialEndsAt!==null&&Date.now()>=trialEndsAt);}
+$('view-access').onclick=()=>{document.querySelector('.notice').scrollIntoView({behavior:'smooth',block:'center'});$('signout').hidden?$('google-button').focus():$('signout').focus();};
+function showAccess(){
+  const kind=String(license?.access||license?.status||'').toLowerCase(),expiredTrial=kind==='trial'&&trialEndsAt!==null&&Date.now()>=trialEndsAt,allowed=hasAccess(),email=license?.email||license?.userEmail||'';
+  const label=expiredTrial?'TRIAL ENDED — PAYMENT REQUIRED':({owner:'OWNER ACCESS — no trial or subscription required',trial:`TRIAL REMAINING: ${trialText()}`,subscription:'MONTHLY SUBSCRIPTION ACTIVE',one_task_credit:'ONE TASK CREDIT AVAILABLE',complimentary:'COMPLIMENTARY ACCESS ACTIVE',blocked:'ACCOUNT BLOCKED',subscription_required:'TRIAL ENDED — PAYMENT REQUIRED'}[kind]||'ACCESS STATUS UNAVAILABLE');
+  $('overview-access').textContent=token?(kind==='trial'?'15-day trial':allowed?'Access active':'Payment required'):'Sign in required';$('overview-countdown').textContent=token?(kind==='trial'?trialText():label):'Your access is checked securely.';
+  $('google-button').hidden=Boolean(token);$('signed-in').textContent=email||'Not signed in';$('footer-access').textContent=token?label:'Sign in to continue';$('access').textContent=token?label:'Sign in with Google to check your access and continue.';
+  $('payment-options').hidden=!token||allowed;$('editor').disabled=!allowed||valuationBusy;$('pdf-file').disabled=false;$('read-pdf').disabled=pdfReading||!allowed||!$('pdf-file').files?.length;$('subscribe').disabled=!runtimeConfig.subscriptionUrl;$('one-task').disabled=!runtimeConfig.perEstimatePaymentUrl;
+  if(token&&!allowed){$('status-title').textContent='Payment required';$('status-detail').textContent='Choose a PayU access option above. Access refreshes after payment verification.';}
+  return allowed;
 }
-function renumber(){[...$('rows').rows].forEach((r,i)=>r.cells[0].textContent=i+1);}
-function payload(){return {workCode:$('work-code').value, personDays:$('days').value,dailyWage:$('wage').value,
-  rows:[...$('rows').rows].map(row=>Object.fromEntries([...row.querySelectorAll('input')].map(i=>[i.dataset.key,i.value])))};}
-async function request(path, body){
-  const response=await fetch(api+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
-  const data=await response.json();if(!response.ok)throw Error(data.error||'Service unavailable.');return data;
+async function refreshAccess(){
+  if(!token)return showAccess();if(refreshingAccess)return Boolean(license?.accessAllowed);refreshingAccess=true;
+  try{const state=await request('/v1/access');license={...license,...state,email:state.email||license?.email||'',name:state.name||license?.name||''};const seconds=Number(license.trialSecondsRemaining);trialEndsAt=Number.isFinite(seconds)&&seconds>=0?Date.now()+seconds*1000:null;const allowed=showAccess();if(allowed&&paymentPollTimer){clearInterval(paymentPollTimer);paymentPollTimer=null;$('qr-panel').hidden=true;log('PayU access confirmed by the licensing server');}return allowed;}
+  catch(error){$('access').textContent=error.message;return false;}finally{refreshingAccess=false;}
 }
-$('add').onclick=addRow;
-for(const id of ['days','wage','work-code'])$(id).oninput=invalidate;
-$('calculate').onclick=async()=>{
-  $('errors').textContent='';$('calculate').disabled=true;invalidate();
-  try{
-    const snapshot=payload();$('editor').disabled=true;const calculation=await request('/v1/valuation',snapshot);
-    result={input:snapshot,calculation};calculation.rows.forEach((r,i)=>{const cells=$('rows').rows[i].cells;cells[7].textContent=r.amount;cells[8].textContent=r.labourAmount;});
-    $('totals').textContent=`Total ₹${calculation.total} · Labour ₹${calculation.labourTotal} · Maximum labour ₹${calculation.maximumLabour} · Per person-day ${calculation.perPersonDay===null?'not available':'₹'+calculation.perPersonDay}`;
-    if(calculation.overLimit)$('errors').textContent='Labour amount exceeds the person-day wage limit. Review before use.';
-    $('export').disabled=false;
-  }catch(error){$('errors').textContent=error.message;}finally{$('editor').disabled=!token;$('calculate').disabled=false;}
+function startPaymentCheck(){if(paymentPollTimer)clearInterval(paymentPollTimer);let attempts=0;paymentPollTimer=setInterval(()=>{attempts+=1;refreshAccess();if(attempts>=120){clearInterval(paymentPollTimer);paymentPollTimer=null;}},10000);}
+function paymentUrl(kind){return kind==='task'?runtimeConfig.perEstimatePaymentUrl:runtimeConfig.subscriptionUrl;}
+function openPayment(kind){try{const url=new URL(paymentUrl(kind));if(url.protocol!=='https:'||url.hostname!=='u.payu.in')throw Error();window.open(url.href,'_blank','noopener,noreferrer');startPaymentCheck();log(`Opened PayU ${kind} checkout`);}catch{$('qr-status').textContent='PayU checkout is not configured.';}}
+$('subscribe').onclick=()=>openPayment('monthly');$('one-task').onclick=()=>openPayment('task');
+$('show-qr').onclick=async()=>{
+  $('qr-panel').hidden=false;$('qr-status').textContent='Creating a secure PayU QR…';$('payu-qr').hidden=true;
+  try{const data=await request('/v1/payment/qr',{url:paymentUrl($('qr-kind').value)});$('payu-qr').src=data.image;$('payu-qr').hidden=false;$('qr-status').textContent='Scan the code with your payment app. Access opens after PayU verification.';}
+  catch(error){$('qr-status').textContent=error.message;}
 };
-$('export').onclick=()=>{if(!result)return;const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));link.download='secure-valuation.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);};
-$('signout').onclick=()=>{token='';$('rows').replaceChildren();invalidate();$('editor').disabled=true;$('pdf-file').disabled=true;$('read-pdf').disabled=true;$('pdf-review').replaceChildren();$('pdf-file').value='';$('pdf-status').textContent='';$('signout').hidden=true;$('access').textContent='Signed out. Sign in again to continue.';};
-async function boot(){
-  try{
-    const config=await (await fetch('config.json',{cache:'no-store'})).json();
-    if(!config.apiBase){$('service').textContent='Framework preview — hosted service not connected';$('service-detail').textContent='The browser workspace is installed on the website. Google web sign-in, hosting and live portal verification must be completed before online automation is enabled.';return;}
-    const url=new URL(config.apiBase);if(url.protocol!=='https:')throw Error('HTTPS service required.');api=url.href.replace(/\/$/,'');
-    $('service').textContent='Connecting to hosted service…';$('service-detail').textContent='The free preview server may take about a minute to wake up.';
-    const healthResponse=await fetch(api+'/health',{signal:AbortSignal.timeout(90000)});if(!healthResponse.ok)throw Error('Hosted service unavailable.');
-    const health=await healthResponse.json();if(!health.licenseConfigured)throw Error('Hosted sign-in is not configured.');
-    $('service').textContent='Valuation service connected';$('service-detail').textContent='Selectable PDF reading and valuation are available after sign-in. Portal automation is not enabled.';
-    if(!config.googleClientId){$('access').textContent='Backend connected. Google web sign-in configuration is pending; calculations remain locked until server-verified sign-in is available.';return;}
-    const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;
-    script.onload=()=>{google.accounts.id.initialize({client_id:config.googleClientId,callback:async credential=>{
-      try{token=credential.credential;const state=await request('/v1/access');$('access').textContent=`Access: ${state.access}. Server verified.`;$('editor').disabled=false;$('pdf-file').disabled=false;$('read-pdf').disabled=false;$('signout').hidden=false;if(!$('rows').rows.length)addRow();}
-      catch(error){token='';$('editor').disabled=true;$('access').textContent=error.message;}
-    }});google.accounts.id.renderButton($('google-button'),{theme:'outline',size:'large'});};
-    script.onerror=()=>{$('access').textContent='Google sign-in could not load. Please retry.';};document.head.append(script);
-  }catch(error){$('service').textContent='Hosted service unavailable';$('service-detail').textContent=error.message;}
+$('qr-kind').onchange=()=>{$('payu-qr').hidden=true;$('qr-status').textContent='Choose Show PayU QR to create a code for this option.';};
+function invalidate(){result=null;$('export').disabled=true;$('totals').textContent='Recalculate after changing data.';}
+function addRow(){
+  const row=document.createElement('tr'),serial=document.createElement('td');row.append(serial);
+  for(const [key,label] of [['code','Item code'],['name','Activity'],['remaining','Remaining quantity'],['quantity','New quantity'],['rate','Unit rate'],['labourRate','Labour rate']]){const cell=document.createElement('td'),input=document.createElement('input');input.dataset.key=key;input.setAttribute('aria-label',label);input.maxLength=key==='name'?1000:128;input.oninput=invalidate;cell.append(input);row.append(cell);}
+  row.append(document.createElement('td'),document.createElement('td'));const action=document.createElement('td'),remove=document.createElement('button');remove.type='button';remove.textContent='Delete';remove.onclick=()=>{row.remove();renumber();invalidate();};action.append(remove);row.append(action);$('rows').append(row);renumber();invalidate();
 }
-boot();
+function renumber(){[...$('rows').rows].forEach((row,index)=>row.cells[0].textContent=index+1);}
+function payload(){return {workCode:$('work-code').value,personDays:$('days').value,dailyWage:$('wage').value,rows:[...$('rows').rows].map(row=>Object.fromEntries([...row.querySelectorAll('input')].map(input=>[input.dataset.key,input.value])))};}
+async function request(path,body){const response=await fetch(api+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});const data=await response.json();if(!response.ok){const error=Error(data.error||'Service unavailable.');error.status=response.status;throw error;}return data;}
+function refreshOverview(data){
+  if(data){estimate=data;window.secureEstimate=data;}
+  const current=estimate;
+  if(!current){$('current-name').textContent='No estimate selected';$('current-detail').textContent='0 items · 0 measurement rows';$('current-state').textContent='No estimate selected';$('verified-count').textContent='0%';$('check-detail').textContent='Check source totals before entry.';return;}
+  const items=current.items||[],rowCount=items.reduce((sum,item)=>sum+(item.rows||[]).length,0),warnCount=items.filter(item=>item.warning||item.total_warning).length,completed=Math.min(Number(current.completedItems)||0,items.length);
+  $('current-name').textContent=current.fileName||'Estimate';$('current-detail').textContent=`${items.length} items · ${rowCount} measurement rows`;$('current-state').textContent=warnCount?`${warnCount} items need review`:completed===items.length&&items.length?'All items verified':'Review pending';
+  const verified=items.length?Math.round(100*completed/items.length):0;$('verified-count').textContent=`${verified}%`;$('check-detail').textContent=warnCount?`${warnCount} item(s) have reader warnings. Compare them with the PDF.`:`${completed} of ${items.length} items verified in SECURE.`;
+  $('reader-status').textContent=current.notice||'PDF ready for review.';setProgress(100,'PDF ready for review.');renderSavedLists();
+}
+function readSaved(){if(!storageKey)return [];try{return JSON.parse(localStorage.getItem(storageKey)||'[]');}catch{return [];}}
+function persistEstimate(data){if(!storageKey){$('pdf-status').textContent='Sign in before saving this estimate.';return false;}const saved=readSaved().filter(entry=>entry.id!==data.id);saved.unshift(data);try{localStorage.setItem(storageKey,JSON.stringify(saved.slice(0,30)));}catch(error){$('pdf-status').textContent='Browser storage is full. Keep this page open and retry after freeing space.';return false;}renderSavedLists();return true;}
+function loadSaved(id){const saved=readSaved().find(entry=>entry.id===id);if(!saved)return;estimate=saved;window.secureEstimate=saved;window.renderSecureEstimate?.(saved);refreshOverview();$('pdf-status').textContent=`Loaded ${saved.fileName} from this browser.`;setPage('review');log(`Resumed ${saved.fileName}`);}
+function renderSavedLists(){
+  const saved=readSaved();$('library-count').textContent=saved.length;const empty='<p class="subtle">No saved estimates.</p>';
+  const make=(target)=>{const host=$(target);host.replaceChildren();if(!saved.length){host.innerHTML=empty;return;}saved.forEach(entry=>{const item=document.createElement('div');item.className='saved-estimate';const label=document.createElement('div'),name=document.createElement('strong'),detail=document.createElement('small'),open=document.createElement('button'),remove=document.createElement('button');name.textContent=entry.fileName||'Estimate';detail.textContent=`${entry.items?.length||0} items · Saved ${new Date(entry.savedAt).toLocaleString()}`;open.textContent='Open';open.onclick=()=>loadSaved(entry.id);remove.textContent='Remove';remove.setAttribute('aria-label',`Remove ${entry.fileName||'saved estimate'}`);remove.onclick=()=>{try{localStorage.setItem(storageKey,JSON.stringify(readSaved().filter(savedEntry=>savedEntry.id!==entry.id)));renderSavedLists();log(`Removed saved estimate ${entry.fileName||''}`);}catch{$('pdf-status').textContent='Could not remove this saved estimate from browser storage.';}};label.append(name,detail);item.append(label,open,remove);host.append(item);});};
+  make('resume-list');make('library-list');
+  const recent=$('recent-estimates'),history=$('history-list');recent.replaceChildren();history.replaceChildren();
+  if(!saved.length){recent.innerHTML='<tr><td colspan="4">No saved estimates</td></tr>';history.innerHTML='<tr><td colspan="5">No saved estimates</td></tr>';return;}
+  saved.slice(0,5).forEach((entry,index)=>{const tr=recent.insertRow(),items=entry.items||[],verified=Number(entry.completedItems)||0;[index+1,entry.fileName||'Estimate',`${Math.min(verified,items.length)} / ${items.length}`,verified===items.length&&items.length?'Verified':'Review pending'].forEach(value=>tr.insertCell().textContent=value);});
+  saved.forEach((entry,index)=>{const tr=history.insertRow();[index+1,entry.fileName||'Estimate',entry.items?.length||0,(entry.items||[]).reduce((sum,item)=>sum+(item.rows||[]).length,0),new Date(entry.savedAt).toLocaleString()].forEach(value=>tr.insertCell().textContent=value);});
+}
+$('add').onclick=addRow;for(const id of ['days','wage','work-code'])$(id).oninput=invalidate;
+$('calculate').onclick=async()=>{if(valuationBusy)return;const calculatingToken=token;valuationBusy=true;$('errors').textContent='';$('calculate').disabled=true;invalidate();try{const snapshot=payload();$('editor').disabled=true;const calculation=await request('/v1/valuation',snapshot);if(token!==calculatingToken)return;result={input:snapshot,calculation};calculation.rows.forEach((row,index)=>{const cells=$('rows').rows[index].cells;cells[7].textContent=row.amount;cells[8].textContent=row.labourAmount;});$('totals').textContent=`Total ₹${calculation.total} · Labour ₹${calculation.labourTotal} · Maximum labour ₹${calculation.maximumLabour} · Per person-day ${calculation.perPersonDay===null?'not available':'₹'+calculation.perPersonDay}`;if(calculation.overLimit)$('errors').textContent='Labour amount exceeds the person-day wage limit. Review before use.';$('export').disabled=false;log('Calculated E-MB valuation');}catch(error){if(token!==calculatingToken)return;$('errors').textContent=error.message;if(error.status===402)await refreshAccess();}finally{valuationBusy=false;$('editor').disabled=!hasAccess();$('calculate').disabled=false;}};
+$('export').onclick=()=>{if(!result)return;const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));link.download='secure-valuation.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);};
+$('export-log').onclick=()=>{const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(activityLog,null,2)],{type:'application/json'}));link.download='secure-workspace-log.json';link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);};
+$('signout').onclick=()=>{token='';window.clearSecureEstimate?.();license=null;trialEndsAt=null;storageKey='';estimate=null;window.secureEstimate=null;if(trialTimer)clearInterval(trialTimer);if(countdownTimer)clearInterval(countdownTimer);if(paymentPollTimer)clearInterval(paymentPollTimer);$('rows').replaceChildren();invalidate();$('pdf-review').replaceChildren();$('pdf-file').value='';$('pdf-status').textContent='';$('signout').hidden=true;$('qr-panel').hidden=true;refreshOverview();renderSavedLists();showAccess();$('status-title').textContent='Signed out';$('status-detail').textContent='Sign in with Google to continue.';setPage('overview');log('Signed out');};
+async function boot(){renderSavedLists();try{
+  const config=await(await fetch('config.json',{cache:'no-store'})).json();runtimeConfig=config;if(!config.apiBase){$('service').textContent='Hosted service not connected';$('service-detail').textContent='Sign-in and online processing are not configured.';return;}
+  const url=new URL(config.apiBase);if(url.protocol!=='https:')throw Error('HTTPS service required.');api=url.href.replace(/\/$/,'');$('service').textContent='Connecting to hosted service…';$('service-detail').textContent='The free preview service may take a moment to wake up.';
+  const healthResponse=await fetch(api+'/health',{signal:AbortSignal.timeout(90000)});if(!healthResponse.ok)throw Error('Hosted service unavailable.');const health=await healthResponse.json();if(!health.licenseConfigured)throw Error('Hosted sign-in is not configured.');
+  const capabilities=health.capabilities||{};$('service').textContent='SECURE workspace connected';$('service-detail').textContent=capabilities.scannedPdfReading?'Desktop-trained PDF reading, including scans, and E-MB calculations are available after sign-in.':'Selectable-text PDF reading and E-MB calculations are available after sign-in. Scanned-PDF reading is not ready on this service.';if(!capabilities.trainedPdfReader)$('service-detail').textContent='The trained PDF reader is not ready on this service.';if(!config.googleClientId){$('access').textContent='Google web sign-in is not configured.';return;}
+  const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;
+  script.onload=()=>{google.accounts.id.initialize({client_id:config.googleClientId,callback:async credential=>{try{if(token)$('signout').onclick();token=credential.credential;license=await request('/v1/access');const claims=idTokenClaims(token);license.email=claims.email||'';license.name=claims.name||'';$('signout').hidden=false;$('welcome').textContent=`Welcome, ${license.name||license.email.split('@')[0]||'to SECURE'}`;storageKey='secure-assistant-estimates-v1:'+encodeURIComponent(String(license.userId||license.email||'account'));renderSavedLists();showAccess();if(trialTimer)clearInterval(trialTimer);if(countdownTimer)clearInterval(countdownTimer);trialTimer=setInterval(refreshAccess,60000);countdownTimer=setInterval(showAccess,1000);await refreshAccess();if(license.accessAllowed&&!$('rows').rows.length)addRow();$('status-title').textContent=license.accessAllowed?'Ready to begin':'Payment required';$('status-detail').textContent=license.accessAllowed?'SECURE estimate workspace connected':'Choose a PayU option above; access refreshes after payment verification.';log('Google sign-in and access status verified');}catch(error){token='';license=null;showAccess();$('access').textContent=error.message;$('status-title').textContent='Sign-in needs attention';}}});google.accounts.id.renderButton($('google-button'),{theme:'outline',size:'large'});};script.onerror=()=>{$('access').textContent='Google sign-in could not load. Please retry.';};document.head.append(script);
+}catch(error){$('service').textContent='Hosted service unavailable';$('service-detail').textContent=error.message;$('access').textContent='Sign-in is unavailable until the service reconnects.';}}
+window.secureApp={setPage,readSaved,persistEstimate,refreshOverview,setProgress,request,log,signedIn:()=>Boolean(token),canUse:hasAccess};boot();
